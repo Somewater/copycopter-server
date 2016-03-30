@@ -10,7 +10,7 @@ class Localization < ActiveRecord::Base
 
   def alternates
     blurb.localizations.joins(:locale).where(:locales => { :enabled => true }).
-      order 'locales.key'
+      order('locales.%s' % connection.quote_column_name('key'))
   end
 
   def as_json(options = nil)
@@ -39,7 +39,7 @@ class Localization < ActiveRecord::Base
 
   def self.latest_version
     <<-eosql
-      SELECT DISTINCT ON (localization_id) localization_id, id, content
+      SELECT DISTINCT (localization_id) localization_id, id, content
         FROM versions ORDER BY localization_id DESC, id DESC
     eosql
   end
@@ -49,21 +49,24 @@ class Localization < ActiveRecord::Base
   end
 
   def self.ordered
-    joins(:blurb).order 'blurbs.key'
+    joins(:blurb).order('blurbs.%s' % connection.quote_column_name('key'))
   end
 
   def self.publish
-    ActiveRecord::Base.connection.execute <<-eosql
-      UPDATE localizations
-        SET published_version_id = latest_version.id,
-        published_content = latest_version.content,
-        updated_at = '#{connection.quoted_date(Time.now)}'
-      FROM (
-          #{latest_version}
-        ) AS latest_version
+    sql = <<-SQL
+      UPDATE localizations localizations,
+        (#{latest_version}) as latest_version
+      SET published_version_id = latest_version.id,
+      published_content = latest_version.content,
+      updated_at = '#{connection.quoted_date(Time.now)}'
       WHERE latest_version.localization_id = localizations.id
-      AND localizations.id IN (#{scoped.map(&:id).join(',')});
-    eosql
+    SQL
+    if scoped.present?
+      sql += <<-SQL
+        AND localizations.id IN (#{scoped.map(&:id).join(',')});
+      SQL
+    end
+    ActiveRecord::Base.connection.execute sql
   end
 
   def publish

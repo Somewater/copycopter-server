@@ -14,12 +14,15 @@ class Blurb < ActiveRecord::Base
   after_destroy :update_project_caches
 
   def self.ordered
-    order 'blurbs.key ASC'
+    order('blurbs.%s ASC' % connection.quote_column_name('key'))
   end
 
   def self.to_hash(attribute)
     scope = joins(:localizations => :locale).
-      select("blurbs.key AS blurb_key, locales.key AS locale_key, #{attribute} AS content")
+      select("blurbs.%s AS blurb_key, locales.%s AS locale_key, %s AS content" %
+                 [connection.quote_column_name('key'),
+                  connection.quote_column_name('key'),
+                  connection.quote_column_name(attribute)])
     blurbs = connection.select_rows(scope.to_sql)
     
     data = blurbs.inject({}) do |result, (blurb_key, locale_key, content)|
@@ -37,7 +40,7 @@ class Blurb < ActiveRecord::Base
   end
 
   def self.keys
-    select('key').map { |blurb| blurb.key }
+    select(connection.quote_column_name('key')).map { |blurb| blurb.key }
   end
 
   private

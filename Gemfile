@@ -6,7 +6,7 @@ gem 'bourbon', '2.1.0'
 gem 'formtastic', '2.0.2'
 gem 'htmldiff', '0.0.1'
 gem 'mysql2', '~> 0.3.11'
-gem 'rails', '3.2.6'
+gem 'rails', '3.2.9'
 gem 'yajl-ruby', '1.1.0', :require => 'yajl'
 gem "jquery-rails", "1.0.19"
 
